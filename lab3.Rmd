@@ -4,20 +4,10 @@ output: html_document
 date: "2022-11-27"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-
 ## Exponential distribution
 
 First of all lets generate our variables that we need to use in CI formulas
+
 ```{r}
 mu = 3/10
 M <- 1000
@@ -25,31 +15,59 @@ N <- 1000
 x <- matrix(rexp(N*M, rate = 1/mu), nrow = N)
 sample_mean <- colMeans(x)
 sample_sd <- apply(x, 2, sd)
+theoretical_sd = mu
 ```
-Now lets look how our approach using chi-squared distribution works:
+
+Using the exact distribution of the statistics 2λnX (show it is χ 2 2n and then use quantiles of the latter to get the interval endpoints)
+
+So lets look how our approach using chi-squared distribution works:
+
 ```{r}
 for (alpha in c(.01, .05, .1)){
   cat("For confidence level", 1-alpha, "\n")
   cat("    The fraction of CI's containing the parameter is", 
-      mean(mu < (2 * N * sample_mean) / quantile(rchisq(2*N, df = 2*N), probs = alpha/2)), "\n")
+      mean((2*N*sample_mean) / qchisq(1-alpha/2, df=N*2) <= mu & mu <= (2*N * sample_mean)/qchisq(alpha/2, df=N*2)), "\n")
   cat("    maximal CI length is", max(2* (2 * N * sample_mean) / quantile(rchisq(2*N, df = 2*N), probs = alpha/2)), "\n")
   cat("    mean CI length is", mean(2* (2 * N * sample_mean) / quantile(rchisq(2*N, df = 2*N), probs = alpha/2)), "\n")
 }
 ```
 
-How approach using the normal approximation works
+Using the normal approximation N (µ, σ2 ) for X; the parameters are µ = θ and σ 2 = s 2/n, where s 2 = θ 2 is the population variance (i.e., variance of the original distribution E (λ)). In other words, we form the Z-statistics Z := √ n(X − θ)/θ and use the fact that it is approximately standard normal N (0, 1) to find that P(\|θ − X\| ≤ zβθ/√ n) = P(\|Z\| ≤ zβ) = 2β − 1. in other words, θ is with probability 2β − 1 within X ± zβθ/√ n. 
+Let`s see how this approach using the normal approximation works
+
 ```{r}
 for (alpha in c(.01, .05, .1)){
   beta = 1 - alpha / 2
   cat("For confidence level", 1-alpha, "\n")
   cat("    The fraction of CI's containing the parameter is", 
-      mean(abs(mu - sample_mean) <= qnorm(beta) * mu / sqrt(N)), "\n")
-  cat("    CI length is", max(2 * qnorm(beta) * mu / sqrt(N)), "\n")
+      mean(abs(mu - sample_mean) <= qnorm(beta) * theoretical_sd / sqrt(N)), "\n")
+  cat("    CI length is", mean(2 * qnorm(beta) * theoretical_sd / sqrt(N)), "\n")
 }
 ```
-And 3-rd task that we should finish
 
-How approach using the Student t distribution works:
+ The confidence interval constructed above uses the unknown variance s
+2 = θ
+2 and is of little use in practice.
+Instead, we can solve the double inequality
+|θ − X| ≤ zβθ/√
+n
+for θ and get another confidence interval of confidence level 2β −1 that is independent of the unknown parameter.
+
+```{r}
+for (alpha in c(.01, .05, .1)){
+  beta = 1 - alpha / 2
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(abs(mu - sample_mean) <= qnorm(beta) * sample_sd / sqrt(N)), "\n")
+  cat("    CI length is", mean(2 * qnorm(beta) * sample_sd / sqrt(N)), "\n")
+}
+```
+
+Another (and a more universal approach) to get rid of the dependence on θ in (2) is to estimate s via the sample
+standard error and use approximation of X via Student t-distribution
+
+Let`s see how approach using the Student t distribution works:
+
 ```{r}
 for (alpha in c(.01, .05, .1)){
   cat("For confidence level", 1-alpha, "\n")
@@ -59,26 +77,43 @@ for (alpha in c(.01, .05, .1)){
   cat("    mean CI length is", 2*qt(1-alpha/2, N-1) * mean(sample_sd) / sqrt(N), "\n")
 }
 ```
+
 ## Poisson distribution
 
-How approach using the normal approximation works
+#### Repeat parts (2)–(4) of Problem 3 (with corresponding amendments) for a Poisson distribution P(θ).
+
+How approach using the normal approximation works:
+
 ```{r}
 mu = 3/10
 M <- 2000
 N <- 1000
 x <- matrix(rpois(N*M, lambda = mu), nrow = N)
 sample_mean <- colMeans(x)
+theoretical_sd = sqrt(mu)
 sample_sd <- apply(x, 2, sd)
 for (alpha in c(.01, .05, .1)){
   beta = 1 - alpha / 2
   cat("For confidence level", 1-alpha, "\n")
   cat("    The fraction of CI's containing the parameter is", 
-      mean(abs(mu - sample_mean) <= qnorm(beta) * mu / sqrt(N)), "\n")
-  cat("    CI length is", max(2 * qnorm(beta) * mu / sqrt(N)), "\n")
+      mean(abs(mu - sample_mean) <= qnorm(beta) * theoretical_sd / sqrt(N)), "\n")
+  cat("    CI length is", max(2 * qnorm(beta) * theoretical_sd / sqrt(N)), "\n")
+}
+```
+
+
+```{r}
+for (alpha in c(.01, .05, .1)){
+  beta = 1 - alpha / 2
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(abs(mu - sample_mean) <= qnorm(beta) * sample_sd / sqrt(N)), "\n")
+  cat("    CI length is", mean(2 * qnorm(beta) * sample_sd / sqrt(N)), "\n")
 }
 ```
 
 How approach using the Student t distribution works:
+
 ```{r}
 for (alpha in c(.01, .05, .1)){
   cat("For confidence level", 1-alpha, "\n")
@@ -88,4 +123,3 @@ for (alpha in c(.01, .05, .1)){
   cat("    mean CI length is", 2*qt(1-alpha/2, N-1) * mean(sample_sd) / sqrt(N), "\n")
 }
 ```
-
