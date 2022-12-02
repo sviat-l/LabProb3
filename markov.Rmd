@@ -62,14 +62,14 @@ $$P=\begin{pmatrix}
 \\0.9 & 0 & 0.1 & 0
 \\0.8 & 0 & 0.1 & 0.1
 \\0.9 & 0.1 & 0 & 0
-\end{pmatrix}\\
+\end{pmatrix}\\ $$
 
-$$ System of equations: $$\begin{cases}
+System of equations: $$\begin{cases}
 \pi_0 + \pi_1 + \pi_2 + \pi_3 = 1 
 \\ \pi_0 = \pi_0 * \frac{9} {10} + \pi_1 * \frac{9} {10} + \pi_2 * \frac{8} {10} + \pi_3 * \frac{9}{10} 
 \\ \pi_1 = \pi_0 * \frac{1}{10} + \pi_2 * \frac{1}{10} + \pi_1 * \frac{1}{10} + \pi_3 * \frac{1}{10}
 \\ \pi_2 = \pi_1 * \frac{1}{10} + \pi_2 * \frac{1}{10} \\
-\pi_3 = \pi_2 * \frac 1 {10} \end{cases}\ \implies 1000 *\pi_3 = 1 \implies \pi_3 = 0.001 $$
+\pi_3 = \pi_2 * \frac 1 {10} \end{cases}\ \implies 1000 *\pi_3 = 1 \implies \pi_3 = 0.001 $$\\
 
 ```{r}
 transition_matrix = matrix(c(0.9, 0.1, 0  , 0,
@@ -106,6 +106,7 @@ Confidence: $$
 \sqrt{N} \gtrapprox 31.5 \\
 N_{min} \approx 990
 $$\
+
 ```{r}
 error_prob <- function(n, N, theoretical, eps, num_iter){
   ans = 0
@@ -119,24 +120,23 @@ error_prob <- function(n, N, theoretical, eps, num_iter){
 }
 ```
 
-
 ```{r}
 inter = 0.03
 alpha = 0.95
 th_min_N = (-qnorm((1-alpha)/2)*th_sd/inter)**2
 th_min_N = 990
-#error_prob(1000, th_min_N, th_mu, 0.03, 456)
+error_prob(1000, th_min_N, th_mu, 0.03, 456)
 ```
-# Problem 2 
-In the setting of Problem 1, assume that the random digit generation stops at the first occurrence
-of the TLN (i.e., that the state S4 of the Markov chain is now absorbing). In this problem, you will estimate the average
-length of such sequences (i.e., the average time till absorption in the Markov chain).
+
+# Problem 2
+
+In the setting of Problem 1, assume that the random digit generation stops at the first occurrence of the TLN (i.e., that the state S4 of the Markov chain is now absorbing). In this problem, you will estimate the average length of such sequences (i.e., the average time till absorption in the Markov chain).
 
 ## 1
-Make necessary amendments to the transition probabilities matrix P above and solve the corresponding system
-to find the expected time E(T ) till absorption
 
-The state s3 is absorbing.  The transition matrix will be:
+Make necessary amendments to the transition probabilities matrix P above and solve the corresponding system to find the expected time E(T ) till absorption
+
+The state s3 is absorbing. The transition matrix will be:
 
 $$P_{new}=\begin{pmatrix}
 0.9 & 0.1 & 0 & 0
@@ -164,8 +164,8 @@ meanAbsorptionTime(chain)
 As we can see, the expected time for absorbing is 1000.
 
 ## 2
-Estimate numerically the expected length E(T) till the first occurrence of the TLN by running a sufficiently large
-number N of experiments
+
+Estimate numerically the expected length E(T) till the first occurrence of the TLN by running a sufficiently large number N of experiments
 
 ```{r}
  get_first_occur <- function(row_seq, desired=c(0,0,3)){
@@ -197,7 +197,6 @@ absorb_time <-function(desired=c(0,0,3), cycle_step=1000){
 }
 ```
 
-
 ```{r}
 get_expected_length <- function(N, cycle_step=1000, desired=c(0,0,3)){
   result = sample(0, size=N, replace = T)
@@ -208,26 +207,22 @@ get_expected_length <- function(N, cycle_step=1000, desired=c(0,0,3)){
 }
 ```
 
-
 ```{r}
-res <- get_expected_length(1000000)
+res <- get_expected_length(1e5)
 mean(res)
 #get_first_occur(sample(0:9, 10, replace=T), c(0,0,3))
-#absorb_time(cycle_step=100)
+absorb_time(cycle_step=100)
 ```
+
 ## 3
 
 Let $c=10$:
 
-Confidence: $$
-1 - \alpha = 0.95 \leq P(|\hat T_n - T_n|<c) \\
- P(\frac{|\hat p_n - p_n|\sqrt{N}} {\sigma} \leq \frac {c\sqrt{N}} {\sigma} ) \approx 1- 2Ф(-\frac {\sqrt{N}} \sigma 0.03)  \\
-Ф(-\frac {\sqrt{N}} \sigma 0.03) = \frac \alpha 2 = 0.025 \\
-\sigma_{theoretical} = 0.4823 \\
+Confidence: \$\$ 1 - \alpha = 0.95 \leq P(\|\hat T_n - T_n\|\<c) \\
 
-\sqrt{N} \gtrapprox 31.5 \\
-N_{min} \approx 990
-$$\
+P(\|\hat T_n - T_n\|\>c) \leq \frac{c^2}{\sigma^2} = \frac{c^2}{\sigma_{th}^2/N} \\ N \geq \\frac{\\sigma\_{th}\^2}{\\alpha\*c\^2} \\
+
+N\_{min} \approx 200 000 \$\$\
 
 ```{r}
 num_iter = 34
@@ -241,19 +236,23 @@ get_sample_means <- function(N_min, num_iter=11, desired="003"){
 ```
 
 ```{r}
-# th_sd_abs  = sd(get_expected_length(1e7))
-th_sd_abs = 1000
-# th_sd_abs  = mean(get_expected_length(1e7))
-th_mu_abs = 1000
-th_min_N_abs = 2e4
+alpha = 0.05
+eps=10
+th_sd_abs = 1001.7
+#th_sd_abs  = sd(get_expected_length(1e7))
+th_mu_abs = 999.1
+#th_mu_abs  = mean(get_expected_length(1e7))
+
+th_min_N_abs = th_sd_abs*th_sd_abs/(alpha*eps*eps)
+th_min_N_abs = floor(th_min_N_abs)
+th_min_N_abs
 ```
 
 ### Validate results
+
 ```{r}
 num_iter = 11
 res = get_sample_means(th_min_N_abs, num_iter)
 print(res)
 mean(abs(res-th_mu_abs)<10)
 ```
-
-
