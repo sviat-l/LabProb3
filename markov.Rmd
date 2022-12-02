@@ -1,0 +1,259 @@
+```{r}
+options(warn=-1)
+library(markovchain)
+```
+
+# Problem 1
+
+In the first part, we will estimate the probability that a random digit sequence of length n contains the TLN (consider the cases n = 100, n = 200, n = 1000).
+
+## 1
+
+1.  Estimate numerically the probability ˆpn of the event that your TLN occurs in a random digit sequence d1d2d3 ...dn. Hint: Such a sequence can be generated with R command sample(0:9, n, replace=T); you will need to generate a sample of such sequences of sufficiently large size N
+
+```{r}
+count_ones <- function(test, desired="003"){
+    test = paste(test, collapse = "")
+    result =lengths(regmatches(test, gregexpr(desired, test)))
+    if (result > 1){
+      result = 1
+    }
+    return(result)
+}
+```
+
+```{r}
+ get_N_results <- function(N, n, desired="003"){
+    result = sample(0, size=N, r=T)
+    for (i in 1:N){
+      result[i] =  count_ones(sample(0:9, n, replace=T), desired)
+    }
+    return  (result)
+ }
+ 
+```
+
+```{r}
+desired = "003"
+
+res_100 = get_N_results(1e5, 1e2, desired)
+res_200 = get_N_results(1e5, 2e2, desired)
+res_1000 = get_N_results(1e5, 1e3, desired)
+
+```
+
+```{r}
+cat("Probability for n = 100 after N = 1e5 iterations: ", mean(res_100), "\n")
+cat("Probability for n = 200 after N = 1e5 iterations: ", mean(res_200), "\n")
+cat("Probability for n = 1000 after N = 1e5 iterations: ", mean(res_1000), "\n")
+
+```
+
+## 2
+
+Identify the the Markov chain structure with four states S0,S1,S2,S3 in this sequence with Sk denoting the number of correct last digits (eg., for the team id number 028 these states will be S0 ="\*", S1 ="0", S2 ="02", S3 ="028"). Determine the transition probabilities matrix P and find the limiting probability pn for the state "028". Compare with the result obtained in part 1.
+
+Markov chain for 003
+
+S1 = "\*", S2 = 0, S3 = 00, S4 = 003
+
+$$P=\begin{pmatrix}
+0.9 & 0.1 & 0 & 0
+\\0.9 & 0 & 0.1 & 0
+\\0.8 & 0 & 0.1 & 0.1
+\\0.9 & 0.1 & 0 & 0
+\end{pmatrix}\\
+
+$$ System of equations: $$\begin{cases}
+\pi_0 + \pi_1 + \pi_2 + \pi_3 = 1 
+\\ \pi_0 = \pi_0 * \frac{9} {10} + \pi_1 * \frac{9} {10} + \pi_2 * \frac{8} {10} + \pi_3 * \frac{9}{10} 
+\\ \pi_1 = \pi_0 * \frac{1}{10} + \pi_2 * \frac{1}{10} + \pi_1 * \frac{1}{10} + \pi_3 * \frac{1}{10}
+\\ \pi_2 = \pi_1 * \frac{1}{10} + \pi_2 * \frac{1}{10} \\
+\pi_3 = \pi_2 * \frac 1 {10} \end{cases}\ \implies 1000 *\pi_3 = 1 \implies \pi_3 = 0.001 $$
+
+```{r}
+transition_matrix = matrix(c(0.9, 0.1, 0  , 0,
+                             0.9, 0  , 0.1, 0, 
+                             0.8, 0  , 0.1, 0.1, 
+                             0.9, 0.1, 0  , 0   ), nrow=4, ncol=4, byrow=TRUE)
+transition_matrix
+chain <- new("markovchain", transitionMatrix = transition_matrix)
+steadyStates(chain)
+```
+
+## 3
+
+3.  Determine approximately the sample size N which guarantees that the absolute error \|pˆn − pn\| of the estimate pˆn is below 0.03 with confidence level of at least 95 percent. Rerun the experiments for n = 1000 with the determined size N to illustrate the confidence interval and confidence level.
+
+```{r}
+#th_mu = mean(get_N_results(1e5, 1e3, "003"))
+th_mu = 0.6324
+#th_sd = sd(get_N_results(1e5, 1e3, "003"))
+th_sd = 0.4823
+```
+
+Let $c=0.03$, then we have
+
+$$ P(|\hat{p_n} - p_n|< c)$$
+
+Confidence: $$
+1 - \alpha = 0.95 \leq P(|\hat p_n - p_n|<c) \\
+ P(\frac{|\hat p_n - p_n|\sqrt{N}} {\sigma} \leq \frac {c\sqrt{N}} {\sigma} ) \approx 1- 2Ф(-\frac {\sqrt{N}} \sigma 0.03)  \\
+Ф(-\frac {\sqrt{N}} \sigma 0.03) = \frac \alpha 2 = 0.025 \\
+\sigma_{theoretical} = 0.4823 \\
+-\frac {\sqrt{N}} \sigma * 0,03 \leq Ф^{-1}(0.025) \\
+-\frac {\sqrt{N}} {0.4823} * 0,03 \leq -1.96 \\
+\sqrt{N} \gtrapprox 31.5 \\
+N_{min} \approx 990
+$$\
+```{r}
+error_prob <- function(n, N, theoretical, eps, num_iter){
+  ans = 0
+  for (i in 1:num_iter){
+    curr_res = get_N_results(N, n, "003")
+    if (abs(mean(curr_res) - theoretical)< eps){
+      ans = ans + 1
+    }
+  }
+  return (ans/num_iter)
+}
+```
+
+
+```{r}
+inter = 0.03
+alpha = 0.95
+th_min_N = (-qnorm((1-alpha)/2)*th_sd/inter)**2
+th_min_N = 990
+#error_prob(1000, th_min_N, th_mu, 0.03, 456)
+```
+# Problem 2 
+In the setting of Problem 1, assume that the random digit generation stops at the first occurrence
+of the TLN (i.e., that the state S4 of the Markov chain is now absorbing). In this problem, you will estimate the average
+length of such sequences (i.e., the average time till absorption in the Markov chain).
+
+## 1
+Make necessary amendments to the transition probabilities matrix P above and solve the corresponding system
+to find the expected time E(T ) till absorption
+
+The state s3 is absorbing.  The transition matrix will be:
+
+$$P_{new}=\begin{pmatrix}
+0.9 & 0.1 & 0 & 0
+\\0.9 & 0 & 0.1 & 0
+\\0.8 & 0 & 0.1 & 0.1
+\\0 & 0 & 0 & 1
+\end{pmatrix}$$\
+
+System of equations: $$\begin{cases}
+\mu_3 = 0
+\\ \mu_0 = 1+ \mu_0 * \frac{9} {10} + \mu_1 * \frac{1} {10}
+\\ \mu_1 = 1 + \mu_0 * \frac{9}{10} + \mu_2 * \frac{1}{10}
+\\ \mu_2 = 1 + \mu_0 * \frac{8}{10} + \mu_2 * \frac{1}{10} + \mu_2 * \frac{1}{10}
+\end{cases}\ \implies \mu_0 = 1000 $$
+
+```{r}
+transition_matrix = matrix(c(0.9, 0.1, 0  , 0,
+                             0.9, 0  , 0.1, 0, 
+                             0.8, 0  , 0.1, 0.1, 
+                             0  , 0  , 0  , 1   ), nrow=4, ncol=4, byrow=TRUE)
+chain <- new("markovchain", transitionMatrix = transition_matrix)
+meanAbsorptionTime(chain)
+```
+
+As we can see, the expected time for absorbing is 1000.
+
+## 2
+Estimate numerically the expected length E(T) till the first occurrence of the TLN by running a sufficiently large
+number N of experiments
+
+```{r}
+ get_first_occur <- function(row_seq, desired=c(0,0,3)){
+   for (i in 1:(length(row_seq)-2)){
+     if (row_seq[i] == desired[1] && row_seq[i+1] == desired[2] && row_seq[i+2] == desired[3]){
+       return(i+2)
+     }
+   }
+   return(0)
+ }
+```
+
+```{r}
+absorb_time <-function(desired=c(0,0,3), cycle_step=1000){
+  cycle_num = 0
+  row_data = sample(0:9, size=cycle_step, r=T)
+   
+  while (TRUE){
+    result = get_first_occur(row_data, desired)
+    if (result != 0){
+      return (result + (cycle_step-2)*cycle_num)
+    }
+    new_data = sample(0:9, size=cycle_step, r=T)
+    new_data[1] = row_data[cycle_step-1]
+    new_data[2] = row_data[cycle_step]
+    row_data = new_data
+    cycle_num = cycle_num + 1
+  }
+}
+```
+
+
+```{r}
+get_expected_length <- function(N, cycle_step=1000, desired=c(0,0,3)){
+  result = sample(0, size=N, replace = T)
+  for (i in 1:N){
+    result[i] <- absorb_time()
+  }
+  return(result)
+}
+```
+
+
+```{r}
+res <- get_expected_length(1000000)
+mean(res)
+#get_first_occur(sample(0:9, 10, replace=T), c(0,0,3))
+#absorb_time(cycle_step=100)
+```
+## 3
+
+Let $c=10$:
+
+Confidence: $$
+1 - \alpha = 0.95 \leq P(|\hat T_n - T_n|<c) \\
+ P(\frac{|\hat p_n - p_n|\sqrt{N}} {\sigma} \leq \frac {c\sqrt{N}} {\sigma} ) \approx 1- 2Ф(-\frac {\sqrt{N}} \sigma 0.03)  \\
+Ф(-\frac {\sqrt{N}} \sigma 0.03) = \frac \alpha 2 = 0.025 \\
+\sigma_{theoretical} = 0.4823 \\
+
+\sqrt{N} \gtrapprox 31.5 \\
+N_{min} \approx 990
+$$\
+
+```{r}
+num_iter = 34
+get_sample_means <- function(N_min, num_iter=11, desired="003"){
+  results <- sample(0, num_iter, replace = T)
+  for (i in 1:num_iter){
+    results[i] <- mean(get_expected_length(N_min, desired = desired))
+  }
+  return (results)
+}
+```
+
+```{r}
+# th_sd_abs  = sd(get_expected_length(1e7))
+th_sd_abs = 1000
+# th_sd_abs  = mean(get_expected_length(1e7))
+th_mu_abs = 1000
+th_min_N_abs = 2e4
+```
+
+### Validate results
+```{r}
+num_iter = 11
+res = get_sample_means(th_min_N_abs, num_iter)
+print(res)
+mean(abs(res-th_mu_abs)<10)
+```
+
+

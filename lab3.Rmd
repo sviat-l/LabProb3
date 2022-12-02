@@ -1,0 +1,91 @@
+---
+title: "Untitled"
+output: html_document
+date: "2022-11-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+## Exponential distribution
+
+First of all lets generate our variables that we need to use in CI formulas
+```{r}
+mu = 3/10
+M <- 1000
+N <- 1000
+x <- matrix(rexp(N*M, rate = 1/mu), nrow = N)
+sample_mean <- colMeans(x)
+sample_sd <- apply(x, 2, sd)
+```
+Now lets look how our approach using chi-squared distribution works:
+```{r}
+for (alpha in c(.01, .05, .1)){
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(mu < (2 * N * sample_mean) / quantile(rchisq(2*N, df = 2*N), probs = alpha/2)), "\n")
+  cat("    maximal CI length is", max(2* (2 * N * sample_mean) / quantile(rchisq(2*N, df = 2*N), probs = alpha/2)), "\n")
+  cat("    mean CI length is", mean(2* (2 * N * sample_mean) / quantile(rchisq(2*N, df = 2*N), probs = alpha/2)), "\n")
+}
+```
+
+How approach using the normal approximation works
+```{r}
+for (alpha in c(.01, .05, .1)){
+  beta = 1 - alpha / 2
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(abs(mu - sample_mean) <= qnorm(beta) * mu / sqrt(N)), "\n")
+  cat("    CI length is", max(2 * qnorm(beta) * mu / sqrt(N)), "\n")
+}
+```
+And 3-rd task that we should finish
+
+How approach using the Student t distribution works:
+```{r}
+for (alpha in c(.01, .05, .1)){
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(abs(sample_mean-mu) < qt(1-alpha/2, N-1)*sample_sd/sqrt(N)), "\n")
+  cat("    maximal CI length is", 2*qt(1-alpha, N-1) * max(sample_sd) / sqrt(N), "\n")
+  cat("    mean CI length is", 2*qt(1-alpha/2, N-1) * mean(sample_sd) / sqrt(N), "\n")
+}
+```
+## Poisson distribution
+
+How approach using the normal approximation works
+```{r}
+mu = 3/10
+M <- 2000
+N <- 1000
+x <- matrix(rpois(N*M, lambda = mu), nrow = N)
+sample_mean <- colMeans(x)
+sample_sd <- apply(x, 2, sd)
+for (alpha in c(.01, .05, .1)){
+  beta = 1 - alpha / 2
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(abs(mu - sample_mean) <= qnorm(beta) * mu / sqrt(N)), "\n")
+  cat("    CI length is", max(2 * qnorm(beta) * mu / sqrt(N)), "\n")
+}
+```
+
+How approach using the Student t distribution works:
+```{r}
+for (alpha in c(.01, .05, .1)){
+  cat("For confidence level", 1-alpha, "\n")
+  cat("    The fraction of CI's containing the parameter is", 
+      mean(abs(sample_mean-mu) < qt(1-alpha/2, N-1)*sample_sd/sqrt(N)), "\n")
+  cat("    maximal CI length is", 2*qt(1-alpha, N-1) * max(sample_sd) / sqrt(N), "\n")
+  cat("    mean CI length is", 2*qt(1-alpha/2, N-1) * mean(sample_sd) / sqrt(N), "\n")
+}
+```
+
